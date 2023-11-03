@@ -249,49 +249,90 @@ class AI:
             arr.append([y,x,move[0],move[1],mk])
         return arr
 
+    def calculateb(self, gametiles):
+        piece_values = {
+            'P': -100,
+            'N': -350,
+            'B': -350,
+            'R': -525,
+            'Q': -1000,
+            'K': -10000,
+            'p': 100,
+            'n': 350,
+            'b': 350,
+            'r': 525,
+            'q': 1000,
+            'k': 10000,
+        }
 
-    def calculateb(self,gametiles):
-        value=0
+        mobility_bonus = -10  # Bonus for mobility
+        king_safety_bonus = -50  # Bonus for king safety
+        center_control_bonus = -20  # Bonus for controlling the center
+        piece_development_bonus = -10  # Bonus for developed pieces
+        pawn_structure_penalty = -15  # Penalty for bad pawn structure
+        check_king_bonus = -100  # Bonus for checking the opponent's king
+
+        value = 0
+
         for x in range(8):
             for y in range(8):
-                    if gametiles[y][x].pieceonTile.tostring()=='P':
-                        value=value-100
+                piece_type = gametiles[y][x].pieceonTile.tostring()
+                if piece_type in piece_values:
+                    value += piece_values[piece_type]
 
-                    if gametiles[y][x].pieceonTile.tostring()=='N':
-                        value=value-350
+                    # Mobility bonus
+                    if gametiles[y][x].pieceonTile.alliance == 'Black':
+                        legal_moves = gametiles[y][x].pieceonTile.legalmoveb(gametiles)
+                        if legal_moves is not None:
+                            mobility_bonus_value = mobility_bonus * len(legal_moves)
+                            value += mobility_bonus_value
 
-                    if gametiles[y][x].pieceonTile.tostring()=='B':
-                        value=value-350
+                    # King safety evaluation
+                    if piece_type == 'K':
+                        king_position = (x, y)
 
-                    if gametiles[y][x].pieceonTile.tostring()=='R':
-                        value=value-525
+                        # if king is covered by pawn
+                        if y < 7 and gametiles[y + 1][x].pieceonTile.tostring() == 'P':
+                            king_safety_value = king_safety_bonus
+                            value += king_safety_value
 
-                    if gametiles[y][x].pieceonTile.tostring()=='Q':
-                        value=value-1000
+                        #Control of the center evaluation function
+                    if piece_type == 'P':
+                        if (x, y) in [(3, 3), (3, 4), (4, 3), (4, 4)]:
+                            value += center_control_bonus
 
-                    if gametiles[y][x].pieceonTile.tostring()=='K':
-                        value=value-10000
+                    # Piece development evaluation function
+                    if piece_type.islower():  # Evaluate only for black pieces
+                        if piece_type == 'N':
+                            value += piece_development_bonus
+                        if piece_type == 'B':
+                            value += piece_development_bonus
+                        if piece_type == 'R':
+                            value += piece_development_bonus
+                        if piece_type == 'Q':
+                            value += piece_development_bonus
 
-                    if gametiles[y][x].pieceonTile.tostring()=='p':
-                        value=value+100
+                    # Pawn structure penalty
+                    if piece_type == 'P':
+                        # Penalize for isolated pawns or backward pawns
+                        pawn_neighbors = [
+                            (x - 1, y + 1), (x, y + 1), (x + 1, y + 1)
+                        ]
+                        for nx, ny in pawn_neighbors:
+                            if 0 <= nx < 8 and 0 <= ny < 8 and gametiles[ny][nx].pieceonTile.tostring() == 'P':
+                                break
+                        else:
+                            value += pawn_structure_penalty
 
-                    if gametiles[y][x].pieceonTile.tostring()=='n':
-                        value=value+350
+                     # Check for opponent's king, if the king can't move add bonus points
+                    if piece_type == 'k':
+                        king_position = (x, y)
+                        legal_moves = gametiles[y][x].pieceonTile.legalmoveb(gametiles)
+                        if legal_moves is None:
+                            value += check_king_bonus
 
-                    if gametiles[y][x].pieceonTile.tostring()=='b':
-                        value=value+350
-
-                    if gametiles[y][x].pieceonTile.tostring()=='r':
-                        value=value+525
-
-                    if gametiles[y][x].pieceonTile.tostring()=='q':
-                        value=value+1000
-
-                    if gametiles[y][x].pieceonTile.tostring()=='k':
-                        value=value+10000
 
         return value
-
 
     def move(self,gametiles,y,x,n,m):
         promotion=False
